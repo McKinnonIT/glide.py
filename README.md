@@ -1,8 +1,8 @@
-# Glide API Wrapper
+# 🚀 Glide API Wrapper
 
 A Python wrapper for the Glide API with some extra convenience functions to make your life a little easier.
 
-## Installation
+## 🔧 Installation
 
 ```bash
 # Using uv
@@ -12,7 +12,7 @@ uv pip install -r requirements.txt
 pip install -r requirements.txt
 ```
 
-## Quick Start
+## 🏃‍♂️ Quick Start
 
 ```python
 from glide import Glide
@@ -30,7 +30,7 @@ table.add_rows([
 ])
 ```
 
-## Native API Methods
+## 🔄 Native API Methods
 
 These methods directly map to Glide's V2 API endpoints:
 
@@ -40,16 +40,16 @@ These methods directly map to Glide's V2 API endpoints:
 - `update_row(table_id, row_id, data)` - Update a specific row
 - `overwrite_table(table_id, rows)` - Replace all data in a table
 
-## Helper Methods
+## ✨ Helper Methods
 
 I've added some convenience methods to make common operations easier:
 
-### Table Class
+### 📊 Table Class
 - `upsert(rows, key)` - Update existing rows or insert new ones based on a key column
 - `upload_csv(file_path, key_column=None)` - Import data from a CSV file
 - `_convert_names_to_ids()` - Automatically converts column names to Glide's internal IDs
 
-### Method Limitations
+### ⚠️ Method Limitations
 
 #### upsert()
 - Updates are performed one row at a time due to API limitations
@@ -60,13 +60,13 @@ I've added some convenience methods to make common operations easier:
 - Only processes columns that exist in both the CSV and your Glide table
 - Silently ignores CSV columns that don't match your table schema
 
-### Stash Support
+### 📦 Stash Support
 For large datasets, the wrapper automatically handles stashing:
 - Automatically chunks large datasets
 - Uses Glide's stash API for better performance
 - Handles cleanup after operations complete
 
-## Environment Variables
+## 🔑 Environment Variables
 
 - `GLIDE_API_TOKEN` - Your Glide API token
 - `GLIDE_API_BASE_URL` - Optional custom base URL for the main API
@@ -74,7 +74,7 @@ For large datasets, the wrapper automatically handles stashing:
 - `GLIDE_API_V0_BASE_URL` - Optional custom base URL for V0 API endpoints
 - `APP_ID` - Required for some legacy V1 API operations
 
-## License
+## 📄 License
 
 MIT - Do whatever you want! 🎉
 
