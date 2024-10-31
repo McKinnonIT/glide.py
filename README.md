@@ -49,6 +49,17 @@ I've added some convenience methods to make common operations easier:
 - `upload_csv(file_path, key_column=None)` - Import data from a CSV file
 - `_convert_names_to_ids()` - Automatically converts column names to Glide's internal IDs
 
+### Method Limitations
+
+#### upsert()
+- Updates are performed one row at a time due to API limitations
+- Can be slow for large datasets with many updates (new rows are still batch processed)
+- Consider using `add_rows()` if you don't need to check for duplicates
+
+#### upload_csv()
+- Only processes columns that exist in both the CSV and your Glide table
+- Silently ignores CSV columns that don't match your table schema
+
 ### Stash Support
 For large datasets, the wrapper automatically handles stashing:
 - Automatically chunks large datasets
