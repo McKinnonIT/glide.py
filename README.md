@@ -24,7 +24,7 @@ pip install -r requirements.txt
 from glide.glide import Glide
 
 # Initialize with your API token
-glide = Glide(auth_token="00000000-0000-0000-0000-000000000000")  # Method 1: Direct token
+glide = Glide(auth_token="00000000-0000-0000-0000-000000000000") 
 
 # OR with the GLIDE_API_TOKEN envrionment variable
 glide = Glide()
