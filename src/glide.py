@@ -483,6 +483,9 @@ class Glide:
         Args:
             auth_token (str): Your Glide API authentication token or environment variable GLIDE_API_TOKEN
             base_url (Optional[str]): Custom API base URL. If None, uses default.
+            base_url_v1 (Optional[str]): Custom V1 API base URL. If None, uses default.
+            base_url_v0 (Optional[str]): Custom V0 API base URL. If None, uses default.
+            app_id (Optional[str]): Your Glide app ID or environment variable APP_ID
         """
         self.auth_token = auth_token or os.getenv("GLIDE_API_TOKEN")
         if not self.auth_token:
@@ -493,6 +496,16 @@ class Glide:
         self.base_url = (
             base_url or os.getenv("GLIDE_API_BASE_URL") or self.DEFAULT_BASE_URL
         )
+        self.DEFAULT_V1_BASE_URL = (
+            base_url_v1
+            or os.getenv("GLIDE_API_V1_BASE_URL")
+            or self.DEFAULT_V1_BASE_URL
+        )
+        self.DEFAULT_V0_BASE_URL = (
+            base_url_v0
+            or os.getenv("GLIDE_API_V0_BASE_URL")
+            or self.DEFAULT_V0_BASE_URL
+        )
 
         self.app_id = app_id or os.getenv("APP_ID")
 
@@ -501,17 +514,12 @@ class Glide:
             "Content-Type": "application/json",
         }
 
-    # V2 API Methods
+    # ============================
+    # Native API Methods (V2)
+    # ============================
+
     def list_tables(self) -> List[Dict]:
-        """
-        [V2 API] Get all Big Tables in the current team
-
-        Returns:
-            List[Dict]: A collection of table objects, each with 'id' and 'name'
-
-        Raises:
-            requests.exceptions.RequestException: If the API request fails
-        """
+        """[V2 API] Get all Big Tables in the current team"""
         try:
             response = requests.get(f"{self.base_url}/tables", headers=self.headers)
             response.raise_for_status()
@@ -527,24 +535,7 @@ class Glide:
         schema: Optional[Dict] = None,
         on_schema_error: Optional[str] = None,
     ) -> Dict:
-        """
-        [V2 API] Create a new Big Table in Glide
-
-        Args:
-            name (str): Name of the table (e.g., 'Invoices')
-            rows (List[Dict]): Collection of row objects conforming to the schema (defaults to empty list)
-            schema (Optional[Dict]): Schema definition for the table. If not provided,
-                will be inferred from the data
-            on_schema_error (Optional[str]): Action to take when data doesn't match schema.
-                Options: 'abort', 'dropColumns', 'updateSchema'
-
-        Returns:
-            Dict: The created table object
-
-        Raises:
-            requests.exceptions.RequestException: If the API request fails
-            ValueError: If invalid parameters are provided
-        """
+        """[V2 API] Create a new Big Table in Glide"""
         if on_schema_error and on_schema_error not in [
             "abort",
             "dropColumns",
@@ -674,23 +665,7 @@ class Glide:
         data: Dict,
         on_schema_error: Optional[str] = None,
     ) -> Dict:
-        """
-        [V2 API] Update a specific row in a Big Table
-
-        Args:
-            table_id (str): ID of the table containing the row
-            row_id (str): ID of the row to update
-            data (Dict): Updated row data
-            on_schema_error (Optional[str]): Action to take when data doesn't match schema.
-                Options: 'abort', 'dropColumns', 'updateSchema'
-
-        Returns:
-            Dict: Response data from the API
-
-        Raises:
-            requests.exceptions.RequestException: If the API request fails
-            ValueError: If invalid parameters are provided
-        """
+        """[V2 API] Update a specific row in a Big Table"""
         if on_schema_error and on_schema_error not in [
             "abort",
             "dropColumns",
@@ -717,31 +692,17 @@ class Glide:
         except requests.exceptions.RequestException as e:
             raise Exception(f"Failed to update row: {str(e)}")
 
-    # V1 API Methods (Legacy)
+    # ============================
+    # Legacy API Methods (V1)
+    # ============================
+
     def get_rows(
         self,
         table_id: Optional[str] = None,
         table_name: Optional[str] = None,
         utc: bool = True,
     ) -> Dict:
-        """
-        [V1 API - DEPRECATED] Get rows from a table (requires Business plan or above)
-
-        Note: This method uses the legacy V1 API and will be replaced with a V2 variant
-        in the future.
-
-        Args:
-            table_id (Optional[str]): ID of the table
-            table_name (Optional[str]): Name of the table
-            utc (bool): Whether to return timestamps in UTC (defaults to True)
-
-        Returns:
-            Dict: Response data containing the table rows
-
-        Raises:
-            requests.exceptions.RequestException: If the API request fails
-            ValueError: If app_id is not set or if neither table_id nor table_name is provided
-        """
+        """[V1 API - DEPRECATED] Get rows from a table"""
         if not self.app_id:
             raise ValueError(
                 "app_id must be provided during initialization or set as APP_ID environment variable"
@@ -770,19 +731,12 @@ class Glide:
         except requests.exceptions.RequestException as e:
             raise Exception(f"Failed to get rows: {str(e)}")
 
+    # ============================
+    # Utility Helper Methods
+    # ============================
+
     def table(self, table_identifier: str) -> Table:
-        """
-        Get a Table object for the specified table name or ID
-
-        Args:
-            table_identifier (str): Name or ID of the table to interact with
-
-        Returns:
-            Table: A Table object for performing operations on the specified table
-
-        Raises:
-            ValueError: If no table is found matching the provided name or ID
-        """
+        """Helper: Get a Table object for the specified table name or ID"""
         # Get all tables and find the matching one
         tables = self.list_tables()
         for table in tables:
@@ -790,19 +744,14 @@ class Glide:
                 return Table(self, table["id"])
         raise ValueError(f"Table with name or ID '{table_identifier}' not found")
 
+    def create_stash(self) -> Stash:
+        """Helper: Create a new stash"""
+        return Stash(self)
+
     @property
     def tables(self) -> List[Dict]:
-        """
-        Alias for list_tables()
-
-        Returns:
-            List[Dict]: A collection of table objects, each with 'id' and 'name'
-        """
+        """Helper: Alias for list_tables()"""
         return self.list_tables()
 
     def __str__(self) -> str:
         return f"Glide(base_url={self.base_url})"
-
-    def create_stash(self) -> Stash:
-        """Create a new stash"""
-        return Stash(self)
