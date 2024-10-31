@@ -5,6 +5,10 @@ A Python wrapper for the Glide API with some extra convenience functions to make
 ## 🔧 Installation
 
 ```bash
+# Clone the repository
+git clone https://github.com/McKinnonIT/glide.py.git
+cd glide.py
+
 # Using uv
 uv pip install -r requirements.txt
 
@@ -18,7 +22,10 @@ pip install -r requirements.txt
 from glide import Glide
 
 # Initialize with your API token
-glide = Glide(auth_token="your-token-here")  # or set GLIDE_API_TOKEN env var
+glide = Glide(auth_token="00000000-0000-0000-0000-000000000000")  # Method 1: Direct token
+
+# OR with the GLIDE_API_TOKEN envrionment variable
+glide = Glide()
 
 # Get a table
 table = glide.table("Your Table Name")
