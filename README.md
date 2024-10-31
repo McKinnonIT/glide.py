@@ -1,6 +1,8 @@
 # 🚀 Glide API Wrapper
 
-A Python wrapper for the Glide API with some extra convenience functions to make your life a little easier.
+A Python wrapper for the [Glide API](https://apidocs.glideapps.com/) with some extra convenience functions to make your life a little easier.
+
+> [Glide](https://www.glideapps.com/) is a no code app builder.
 
 ## 🔧 Installation
 
@@ -19,7 +21,7 @@ pip install -r requirements.txt
 ## 🏃‍♂️ Quick Start
 
 ```python
-from glide import Glide
+from glide.glide import Glide
 
 # Initialize with your API token
 glide = Glide(auth_token="00000000-0000-0000-0000-000000000000")  # Method 1: Direct token
@@ -27,8 +29,14 @@ glide = Glide(auth_token="00000000-0000-0000-0000-000000000000")  # Method 1: Di
 # OR with the GLIDE_API_TOKEN envrionment variable
 glide = Glide()
 
+# Display all table names and IDs
+glide.tables
+
 # Get a table
 table = glide.table("Your Table Name")
+
+# Get table data (rows)
+table.rows()
 
 # Add some rows
 table.add_rows([

@@ -13,3 +13,4 @@ wheels/
 run.py
 .env
 *.csv
+.vscode/extensions.json
