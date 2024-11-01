@@ -111,7 +111,7 @@ class Table:
         row_id: str,
         data: Dict,
         on_schema_error: Optional[str] = None,
-        force: bool = True,
+        force: bool = False,
     ) -> Dict:
         """Update a specific row in the table using either column names or IDs
 
@@ -191,7 +191,7 @@ class Table:
         rows: List[Dict],
         key: str,
         on_schema_error: Optional[str] = None,
-        force: bool = True,
+        force: bool = False,
         stash: bool = False,
     ) -> Dict:
         """Upsert rows into the table based on a matching key"""
