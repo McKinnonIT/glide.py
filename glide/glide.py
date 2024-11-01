@@ -485,7 +485,7 @@ class Glide:
             base_url (Optional[str]): Custom API base URL. If None, uses default.
             base_url_v1 (Optional[str]): Custom V1 API base URL. If None, uses default.
             base_url_v0 (Optional[str]): Custom V0 API base URL. If None, uses default.
-            app_id (Optional[str]): Your Glide app ID or environment variable APP_ID
+            app_id (Optional[str]): Your Glide app ID or environment variable GLIDE_APP_ID
         """
         self.auth_token = auth_token or os.getenv("GLIDE_API_TOKEN")
         if not self.auth_token:
@@ -507,7 +507,7 @@ class Glide:
             or self.DEFAULT_V0_BASE_URL
         )
 
-        self.app_id = app_id or os.getenv("APP_ID")
+        self.app_id = app_id or os.getenv("GLIDE_APP_ID")
 
         self.headers = {
             "Authorization": f"Bearer {self.auth_token}",
@@ -705,7 +705,7 @@ class Glide:
         """[V1 API - DEPRECATED] Get rows from a table"""
         if not self.app_id:
             raise ValueError(
-                "app_id must be provided during initialization or set as APP_ID environment variable"
+                "app_id must be provided during initialization or set as GLIDE_APP_ID environment variable"
             )
 
         if not table_id and not table_name:
