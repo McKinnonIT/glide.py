@@ -14,3 +14,4 @@ run.py
 .env
 *.csv
 .vscode/extensions.json
+.DS_Store

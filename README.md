@@ -43,6 +43,10 @@ table.add_rows([
     {"name": "Alice", "age": 30},
     {"name": "Bob", "age": 25}
 ])
+
+# Update a row
+table.update_row("dr7PLjw4ReqhN3Rrfm-PPA", {"Photo": "https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg"})
+
 ```
 
 ## 🔄 Native API Methods
