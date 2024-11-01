@@ -194,7 +194,6 @@ class Table:
         force: bool = False,
         stash: bool = False,
     ) -> Dict:
-        """Upsert rows into the table based on a matching key"""
         logger.debug(f"Starting upsert operation with {len(rows)} rows")
 
         # Convert key name to ID if necessary
@@ -205,13 +204,41 @@ class Table:
                 for col in self.schema["data"]["columns"]
                 if col["name"] == key
             )
+            logger.debug(f"Converted key '{key}' to ID '{key_id}'")
         elif key not in {col["id"] for col in self.schema["data"]["columns"]}:
             raise ValueError(f"Column '{key}' not found in table schema")
 
         # Get existing rows
         existing_rows = self.rows()[0]["rows"]
-        existing_keys = {row[key_id]: row["$rowID"] for row in existing_rows}
-        existing_rows_dict = {row[key_id]: row for row in existing_rows}
+
+        # Add debug logging
+        logger.debug(f"Found {len(existing_rows)} existing rows")
+        if existing_rows:
+            sample_row = existing_rows[0]
+            logger.debug(f"Sample row keys: {list(sample_row.keys())}")
+            logger.debug(f"Looking for key_id: {key_id}")
+            logger.debug(f"Key present in sample row: {key_id in sample_row}")
+            if key_id in sample_row:
+                logger.debug(f"Sample value for key: {sample_row[key_id]}")
+
+        # Create mappings with safer key access
+        existing_keys = {}
+        existing_rows_dict = {}
+        rows_without_key = 0
+        for row in existing_rows:
+            if key_id in row:
+                key_value = row[key_id]
+                if key_value:  # Only map non-empty values
+                    existing_keys[key_value] = row["$rowID"]
+                    existing_rows_dict[key_value] = row
+            else:
+                rows_without_key += 1
+
+        logger.debug(f"Found {len(existing_keys)} rows with valid key values")
+        if rows_without_key > 0:
+            logger.debug(
+                f"Note: {rows_without_key} rows without the key column '{key}' ({key_id})"
+            )
 
         # Debug logging for schema mapping
         logger.debug("Column name to ID mapping:")
