@@ -128,7 +128,16 @@ class Table:
             if current_row:
                 has_changes = False
                 for key, new_value in converted_data.items():
-                    if key in current_row and current_row[key] != new_value:
+                    old_value = current_row.get(key, "")
+                    if old_value is None:
+                        old_value = ""
+                    if new_value is None:
+                        new_value = ""
+
+                    if old_value != new_value:
+                        logger.debug(
+                            f"Change detected in field {key}: {old_value} -> {new_value}"
+                        )
                         has_changes = True
                         break
 
@@ -196,6 +205,27 @@ class Table:
     ) -> Dict:
         logger.debug(f"Starting upsert operation with {len(rows)} rows")
 
+        # Find matching columns
+        if len(rows) > 0:
+            input_headers = set(rows[0].keys())
+            schema_columns = {col["name"] for col in self.schema["data"]["columns"]}
+            matching_columns = input_headers & schema_columns  # Intersection of sets
+
+            logger.info(f"Matching columns that will be used: {matching_columns}")
+
+            # Filter rows to only include matching columns
+            filtered_rows = []
+            for row in rows:
+                filtered_row = {
+                    col: row[col]
+                    for col in matching_columns
+                    if row.get(col) is not None
+                }
+                if filtered_row:  # Only add if there's data after filtering
+                    filtered_rows.append(filtered_row)
+        else:
+            filtered_rows = rows
+
         # Convert key name to ID if necessary
         key_id = key
         if key in {col["name"] for col in self.schema["data"]["columns"]}:
@@ -250,7 +280,7 @@ class Table:
         inserts = []
         skipped = 0
 
-        for row in rows:
+        for row in filtered_rows:
             converted_row = self._convert_names_to_ids(row)
             key_value = converted_row.get(key_id)
 
@@ -265,14 +295,16 @@ class Table:
                 if not force:
                     has_changes = False
                     for k, new_value in converted_row.items():
-                        old_value = current_row.get(k)
-                        old_is_empty = old_value is None or old_value == ""
-                        new_is_empty = new_value is None or new_value == ""
+                        # Get old value, defaulting to empty string if None
+                        old_value = current_row.get(k, "")
+                        if old_value is None:
+                            old_value = ""
 
-                        if (
-                            not (old_is_empty and new_is_empty)
-                            and old_value != new_value
-                        ):
+                        # Convert new value to empty string if None
+                        if new_value is None:
+                            new_value = ""
+
+                        if old_value != new_value:
                             logger.debug(
                                 f"Change detected in field {k}: {old_value} -> {new_value}"
                             )
@@ -383,7 +415,7 @@ class Table:
                     filtered_row = {
                         col: row[col]
                         for col in matching_columns
-                        if row.get(col) is not None and row[col] != ""
+                        if row.get(col) is not None
                     }
 
                     if filtered_row:  # Only add if there's data after filtering

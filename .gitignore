@@ -15,3 +15,4 @@ run.py
 *.csv
 .vscode/extensions.json
 .DS_Store
+run.sync.py
