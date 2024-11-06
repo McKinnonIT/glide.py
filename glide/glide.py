@@ -205,26 +205,22 @@ class Table:
     ) -> Dict:
         logger.debug(f"Starting upsert operation with {len(rows)} rows")
 
-        # Find matching columns
-        if len(rows) > 0:
-            input_headers = set(rows[0].keys())
-            schema_columns = {col["name"] for col in self.schema["data"]["columns"]}
-            matching_columns = input_headers & schema_columns  # Intersection of sets
+        # Get all unique column names from all rows
+        all_input_headers = set().union(*(row.keys() for row in rows))
+        schema_columns = {col["name"] for col in self.schema["data"]["columns"]}
+        matching_columns = all_input_headers & schema_columns  # Intersection of sets
 
-            logger.info(f"Matching columns that will be used: {matching_columns}")
+        logger.info(f"Found columns across all rows: {all_input_headers}")
+        logger.info(f"Matching columns that will be used: {matching_columns}")
 
-            # Filter rows to only include matching columns
-            filtered_rows = []
-            for row in rows:
-                filtered_row = {
-                    col: row[col]
-                    for col in matching_columns
-                    if row.get(col) is not None
-                }
-                if filtered_row:  # Only add if there's data after filtering
-                    filtered_rows.append(filtered_row)
-        else:
-            filtered_rows = rows
+        # Filter rows to only include matching columns
+        filtered_rows = []
+        for row in rows:
+            filtered_row = {
+                col: row[col] for col in matching_columns if row.get(col) is not None
+            }
+            if filtered_row:  # Only add if there's data after filtering
+                filtered_rows.append(filtered_row)
 
         # Convert key name to ID if necessary
         key_id = key
