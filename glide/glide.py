@@ -103,7 +103,7 @@ class Table:
         """Get the rows cache, fetching if needed"""
         if self._rows_cache is None:
             response = self.rows()
-            self._rows_cache = {row["$rowID"]: row for row in response[0]["rows"]}
+            self._rows_cache = {row["$rowID"]: row for row in response}
         return self._rows_cache
 
     def update_row(
@@ -178,7 +178,7 @@ class Table:
             self.table_id, converted_rows, on_schema_error
         )
 
-    def rows(self, utc: bool = True, include_column_names: bool = False) -> Dict:
+    def rows(self, utc: bool = True, include_column_names: bool = False) -> List[Dict]:
         """Alias for get_rows() - retrieves all rows from the table
 
         Args:
@@ -186,7 +186,7 @@ class Table:
             include_column_names (bool, optional): Whether to map column IDs to their names. Defaults to False.
 
         Returns:
-            Dict: Response data containing the table rows with optional column name mapping
+            List[Dict]: List of row data dictionaries
         """
         response = self.glide.get_rows(table_id=self.table_id, utc=utc)
 
@@ -197,17 +197,16 @@ class Table:
             }
 
             # Map the column IDs to names in each row
-            for result in response:
-                mapped_rows = []
-                for row in result["rows"]:
-                    mapped_row = {
-                        key if key.startswith("$") else id_to_name.get(key, key): value
-                        for key, value in row.items()
-                    }
-                    mapped_rows.append(mapped_row)
-                result["rows"] = mapped_rows
+            mapped_rows = []
+            for row in response:
+                mapped_row = {
+                    key if key.startswith("$") else id_to_name.get(key, key): value
+                    for key, value in row.items()
+                }
+                mapped_rows.append(mapped_row)
+            return mapped_rows
 
-        return response
+        return response  # Return just the rows array
 
     def __str__(self) -> str:
         return self.name or self.table_id
@@ -255,7 +254,7 @@ class Table:
             raise ValueError(f"Column '{key}' not found in table schema")
 
         # Get existing rows
-        existing_rows = self.rows()[0]["rows"]
+        existing_rows = self.rows()
 
         # Add debug logging
         logger.debug(f"Found {len(existing_rows)} existing rows")
@@ -364,7 +363,7 @@ class Table:
                     on_schema_error=on_schema_error,
                 )
             else:
-                logger.info(f"Directly inserting {len(inserts)} rows")
+                logger.debug(f"Directly inserting {len(inserts)} rows")
                 insert_result = self.add_rows(inserts, on_schema_error)
 
         result = {
@@ -668,7 +667,7 @@ class Glide:
             logger.info(f"Adding rows from stash {stash_id}")
         else:
             payload = rows
-            logger.info(f"Adding {len(rows)} rows directly")
+            logger.debug(f"Adding {len(rows)} rows directly")
 
         try:
             response = requests.post(
