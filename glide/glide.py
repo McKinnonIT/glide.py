@@ -178,16 +178,36 @@ class Table:
             self.table_id, converted_rows, on_schema_error
         )
 
-    def rows(self, utc: bool = True) -> Dict:
+    def rows(self, utc: bool = True, include_column_names: bool = False) -> Dict:
         """Alias for get_rows() - retrieves all rows from the table
 
         Args:
             utc (bool, optional): Whether to return timestamps in UTC. Defaults to True.
+            include_column_names (bool, optional): Whether to map column IDs to their names. Defaults to False.
 
         Returns:
-            Dict: Response data containing the table rows
+            Dict: Response data containing the table rows with optional column name mapping
         """
-        return self.glide.get_rows(table_id=self.table_id, utc=utc)
+        response = self.glide.get_rows(table_id=self.table_id, utc=utc)
+
+        if include_column_names:
+            # Create mapping of column IDs to names
+            id_to_name = {
+                col["id"]: col["name"] for col in self.schema["data"]["columns"]
+            }
+
+            # Map the column IDs to names in each row
+            for result in response:
+                mapped_rows = []
+                for row in result["rows"]:
+                    mapped_row = {
+                        key if key.startswith("$") else id_to_name.get(key, key): value
+                        for key, value in row.items()
+                    }
+                    mapped_rows.append(mapped_row)
+                result["rows"] = mapped_rows
+
+        return response
 
     def __str__(self) -> str:
         return self.name or self.table_id
