@@ -178,35 +178,17 @@ class Table:
             self.table_id, converted_rows, on_schema_error
         )
 
-    def rows(self, utc: bool = True, include_column_names: bool = False) -> List[Dict]:
+    def rows(self, *args, **kwargs) -> Dict:
         """Alias for get_rows() - retrieves all rows from the table
 
-        Args:
-            utc (bool, optional): Whether to return timestamps in UTC. Defaults to True.
-            include_column_names (bool, optional): Whether to map column IDs to their names. Defaults to False.
+        All arguments are passed directly to get_rows(). Common arguments include:
+        - utc (bool): Whether to return timestamps in UTC
+        - include_column_names (bool): If True, returns column names instead of IDs
 
         Returns:
-            List[Dict]: List of row data dictionaries
+            Dict: Response data containing the table rows
         """
-        response = self.glide.get_rows(table_id=self.table_id, utc=utc)
-
-        if include_column_names:
-            # Create mapping of column IDs to names
-            id_to_name = {
-                col["id"]: col["name"] for col in self.schema["data"]["columns"]
-            }
-
-            # Map the column IDs to names in each row
-            mapped_rows = []
-            for row in response:
-                mapped_row = {
-                    key if key.startswith("$") else id_to_name.get(key, key): value
-                    for key, value in row.items()
-                }
-                mapped_rows.append(mapped_row)
-            return mapped_rows
-
-        return response  # Return just the rows array
+        return self.glide.get_rows(table_id=self.table_id, *args, **kwargs)
 
     def __str__(self) -> str:
         return self.name or self.table_id
@@ -229,8 +211,8 @@ class Table:
         schema_columns = {col["name"] for col in self.schema["data"]["columns"]}
         matching_columns = all_input_headers & schema_columns  # Intersection of sets
 
-        logger.info(f"Found columns across all rows: {all_input_headers}")
-        logger.info(f"Matching columns that will be used: {matching_columns}")
+        logger.debug(f"Found columns across all rows: {all_input_headers}")
+        logger.debug(f"Matching columns that will be used: {matching_columns}")
 
         # Filter rows to only include matching columns
         filtered_rows = []
@@ -664,7 +646,7 @@ class Glide:
 
         if stash_id:
             payload = {"$stashID": stash_id}
-            logger.info(f"Adding rows from stash {stash_id}")
+            logger.debug(f"Adding rows from stash {stash_id}")
         else:
             payload = rows
             logger.debug(f"Adding {len(rows)} rows directly")
@@ -775,8 +757,19 @@ class Glide:
         table_id: Optional[str] = None,
         table_name: Optional[str] = None,
         utc: bool = True,
-    ) -> Dict:
-        """[V1 API - DEPRECATED] Get rows from a table"""
+        include_column_names: bool = False,
+    ) -> List[Dict]:
+        """[V1 API - DEPRECATED] Get rows from a table
+
+        Args:
+            table_id: The ID of the table
+            table_name: The name of the table (alternative to table_id)
+            utc: Whether to return timestamps in UTC
+            include_column_names: If True, returns column names instead of IDs in the response
+
+        Returns:
+            List[Dict]: List of row dictionaries from the table
+        """
         if not self.app_id:
             raise ValueError(
                 "app_id must be provided during initialization or set as GLIDE_APP_ID environment variable"
@@ -800,7 +793,33 @@ class Glide:
                 json=payload,
             )
             response.raise_for_status()
-            return response.json()
+            result = response.json()
+
+            # Extract just the rows from the first table result
+            rows = result[0].get("rows", []) if result else []
+
+            if include_column_names:
+                # Get schema to map column IDs to names
+                table = self.table(table_id or table_name)
+                id_to_name = {
+                    col["id"]: col["name"] for col in table.schema["data"]["columns"]
+                }
+
+                # Convert column IDs to names in each row
+                for row in rows:
+                    converted_row = {}
+                    for key, value in row.items():
+                        # Keep system columns (starting with $) unchanged
+                        if key.startswith("$"):
+                            converted_row[key] = value
+                        else:
+                            # Convert column ID to name, fallback to ID if not found
+                            column_name = id_to_name.get(key, key)
+                            converted_row[column_name] = value
+                    row.clear()
+                    row.update(converted_row)
+
+            return rows
 
         except requests.exceptions.RequestException as e:
             raise Exception(f"Failed to get rows: {str(e)}")
