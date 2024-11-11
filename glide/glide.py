@@ -355,12 +355,9 @@ class Table:
             "insert_result": insert_result,
         }
 
-        logger.info(f"""
-        Final results:
-        - Updates completed: {result['updated']}
-        - Inserts completed: {result['inserted']}
-        - Rows skipped: {result['skipped']}
-        """)
+        logger.info(
+            f"Final results: Updates completed: {result['updated']}, Inserts completed: {result['inserted']}, Rows skipped: {result['skipped']}"
+        )
 
         return result
 
