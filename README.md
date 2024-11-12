@@ -89,14 +89,11 @@ For large datasets, the wrapper automatically handles stashing:
 
 - `GLIDE_API_TOKEN` - Your Glide API token
 - `GLIDE_API_BASE_URL` - Optional custom base URL for the main API
-- `GLIDE_API_V1_BASE_URL` - Optional custom base URL for V1 API endpoints
 - `GLIDE_API_V0_BASE_URL` - Optional custom base URL for V0 API endpoints
-- `GLIDE_APP_ID` - Required for some legacy V1 API operations
+- `GLIDE_APP_ID` - Required for some legacy V0 & V1 API operations
 
 ## 📄 License
 
 MIT - Do whatever you want! 🎉
 
 ---
-
-Note: This wrapper includes both V2 (current) and V1 (legacy) API support. V1 methods are marked as deprecated and should be avoided in new code.
