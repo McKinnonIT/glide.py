@@ -57,7 +57,9 @@ These methods directly map to Glide's V2 API endpoints:
 - `create_table(name, rows=[], schema=None)` - Create a new table
 - `add_rows(table_id, rows)` - Add rows to a table
 - `update_row(table_id, row_id, data)` - Update a specific row
+- `delete_row(row_id)` - Delete a row
 - `overwrite_table(table_id, rows)` - Replace all data in a table
+
 
 ## ✨ Helper Methods
 
