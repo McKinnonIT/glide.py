@@ -476,6 +476,23 @@ class Table:
                 logger.error(f"Row {i+1}: {rows[i]}")
             raise
 
+    def delete_row(self, row_id: str) -> Dict:
+        """Delete a specific row from the table
+
+        Args:
+            row_id (str): ID of the row to delete
+
+        Returns:
+            Dict: Response indicating success
+        """
+        result = self.glide.delete_row(self.table_id, row_id)
+
+        # Update cache if it exists
+        if self._rows_cache is not None and row_id in self._rows_cache:
+            del self._rows_cache[row_id]
+
+        return result
+
 
 class Stash:
     """Handles stashing operations for large dataset imports"""
@@ -742,6 +759,26 @@ class Glide:
         except requests.exceptions.RequestException as e:
             raise Exception(f"Failed to update row: {str(e)}")
 
+    def delete_row(self, table_id: str, row_id: str) -> Dict:
+        """[V2 API] Delete a specific row from a Big Table
+
+        Args:
+            table_id (str): ID of the table
+            row_id (str): ID of the row to delete
+
+        Returns:
+            Dict: Response indicating success
+        """
+        try:
+            response = requests.delete(
+                f"{self.base_url}/tables/{table_id}/rows/{row_id}", headers=self.headers
+            )
+            response.raise_for_status()
+            return {"success": True, "message": "Row deleted successfully"}
+
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"Failed to delete row: {str(e)}")
+            
     def get_rows(
         self,
         table_id: Optional[str] = None,
