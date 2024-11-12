@@ -178,15 +178,19 @@ class Table:
             self.table_id, converted_rows, on_schema_error
         )
 
-    def rows(self, *args, **kwargs) -> Dict:
-        """Alias for get_rows() - retrieves all rows from the table
+    def rows(self, *args, **kwargs) -> Union[List[Dict], Dict]:
+        """Alias for get_rows() - retrieves rows from the table
 
         All arguments are passed directly to get_rows(). Common arguments include:
-        - utc (bool): Whether to return timestamps in UTC
-        - include_column_names (bool): If True, returns column names instead of IDs
+        - limit (int): Maximum number of rows per page (default: 250)
+        - paginated (bool): If True, returns single page with continuation token
+        - continuation (str): Token from previous response for pagination
 
         Returns:
-            Dict: Response data containing the table rows
+            If paginated=True:
+                Dict containing 'data' and optional 'continuation' token
+            If paginated=False:
+                List[Dict]: All rows from the table
         """
         return self.glide.get_rows(table_id=self.table_id, *args, **kwargs)
 
@@ -519,14 +523,12 @@ class Stash:
 
 class Glide:
     DEFAULT_BASE_URL = "https://api.glideapps.com"
-    DEFAULT_V1_BASE_URL = "https://api.glideapp.io/api/function"
     DEFAULT_V0_BASE_URL = "https://functions.prod.internal.glideapps.com/api/apps"
 
     def __init__(
         self,
         auth_token: Optional[str] = None,
         base_url: Optional[str] = None,
-        base_url_v1: Optional[str] = None,
         base_url_v0: Optional[str] = None,
         app_id: Optional[str] = None,
     ):
@@ -536,7 +538,6 @@ class Glide:
         Args:
             auth_token (str): Your Glide API authentication token or environment variable GLIDE_API_TOKEN
             base_url (Optional[str]): Custom API base URL. If None, uses default.
-            base_url_v1 (Optional[str]): Custom V1 API base URL. If None, uses default.
             base_url_v0 (Optional[str]): Custom V0 API base URL. If None, uses default.
             app_id (Optional[str]): Your Glide app ID or environment variable GLIDE_APP_ID
         """
@@ -549,11 +550,7 @@ class Glide:
         self.base_url = (
             base_url or os.getenv("GLIDE_API_BASE_URL") or self.DEFAULT_BASE_URL
         )
-        self.DEFAULT_V1_BASE_URL = (
-            base_url_v1
-            or os.getenv("GLIDE_API_V1_BASE_URL")
-            or self.DEFAULT_V1_BASE_URL
-        )
+
         self.DEFAULT_V0_BASE_URL = (
             base_url_v0
             or os.getenv("GLIDE_API_V0_BASE_URL")
@@ -745,65 +742,68 @@ class Glide:
         except requests.exceptions.RequestException as e:
             raise Exception(f"Failed to update row: {str(e)}")
 
-    # ============================
-    # Legacy API Methods (V1)
-    # ============================
-
     def get_rows(
         self,
         table_id: Optional[str] = None,
         table_name: Optional[str] = None,
-        utc: bool = True,
+        limit: int = 250,
+        paginated: bool = False,
+        continuation: Optional[str] = None,
         include_column_names: bool = False,
-    ) -> List[Dict]:
-        """[V1 API - DEPRECATED] Get rows from a table
+    ) -> Union[List[Dict], Dict]:
+        """[V2 API] Get rows from a Big Table
 
         Args:
-            table_id: The ID of the table
-            table_name: The name of the table (alternative to table_id)
-            utc: Whether to return timestamps in UTC
+            table_id: ID of the table
+            table_name: Name of the table (alternative to table_id)
+            limit: Maximum number of rows per page (default: 250)
+            paginated: If True, returns single page with continuation token.
+                      If False, automatically fetches all pages (default: False)
+            continuation: Token from previous response for pagination
             include_column_names: If True, returns column names instead of IDs in the response
 
         Returns:
-            List[Dict]: List of row dictionaries from the table
+            If paginated=True:
+                Dict containing:
+                    - data: List of row objects
+                    - continuation: Token for fetching next set of rows (if available)
+            If paginated=False:
+                List[Dict]: All rows from the table
         """
-        if not self.app_id:
-            raise ValueError(
-                "app_id must be provided during initialization or set as GLIDE_APP_ID environment variable"
-            )
-
         if not table_id and not table_name:
             raise ValueError("Either table_id or table_name must be provided")
 
-        if table_id:
-            table_name = f"native-table-{table_id}"
+        # If table_name is provided, find the corresponding table_id
+        if table_name and not table_id:
+            tables = self.list_tables()
+            matching_table = next((t for t in tables if t["name"] == table_name), None)
+            if not matching_table:
+                raise ValueError(f"Table with name '{table_name}' not found")
+            table_id = matching_table["id"]
 
-        payload = {
-            "appID": self.app_id,
-            "queries": [{"tableName": table_name, "utc": utc}],
-        }
+        params = {"limit": limit}
+        if continuation:
+            params["continuation"] = continuation
 
         try:
-            response = requests.post(
-                f"{self.DEFAULT_V1_BASE_URL}/queryTables",
+            # Get first page
+            response = requests.get(
+                f"{self.base_url}/tables/{table_id}/rows",
                 headers=self.headers,
-                json=payload,
+                params=params,
             )
             response.raise_for_status()
             result = response.json()
 
-            # Extract just the rows from the first table result
-            rows = result[0].get("rows", []) if result else []
-
             if include_column_names:
                 # Get schema to map column IDs to names
-                table = self.table(table_id or table_name)
+                table = self.table(table_id)
                 id_to_name = {
                     col["id"]: col["name"] for col in table.schema["data"]["columns"]
                 }
 
-                # Convert column IDs to names in each row
-                for row in rows:
+                # Convert column IDs to names in the rows
+                def convert_row_ids_to_names(row):
                     converted_row = {}
                     for key, value in row.items():
                         # Keep system columns (starting with $) unchanged
@@ -813,10 +813,41 @@ class Glide:
                             # Convert column ID to name, fallback to ID if not found
                             column_name = id_to_name.get(key, key)
                             converted_row[column_name] = value
-                    row.clear()
-                    row.update(converted_row)
+                    return converted_row
 
-            return rows
+                result["data"] = [
+                    convert_row_ids_to_names(row) for row in result["data"]
+                ]
+
+            # If paginated results requested, return single page
+            if paginated:
+                return result
+
+            # Otherwise, collect all rows
+            all_rows = result["data"]
+
+            # Keep fetching while continuation token exists
+            while "continuation" in result:
+                logger.debug(
+                    f"Fetching next page with continuation token: {result['continuation']}"
+                )
+                response = requests.get(
+                    f"{self.base_url}/tables/{table_id}/rows",
+                    headers=self.headers,
+                    params={"limit": limit, "continuation": result["continuation"]},
+                )
+                response.raise_for_status()
+                result = response.json()
+
+                if include_column_names:
+                    result["data"] = [
+                        convert_row_ids_to_names(row) for row in result["data"]
+                    ]
+
+                all_rows.extend(result["data"])
+
+            logger.info(f"Retrieved {len(all_rows)} total rows")
+            return all_rows
 
         except requests.exceptions.RequestException as e:
             raise Exception(f"Failed to get rows: {str(e)}")
