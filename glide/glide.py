@@ -846,7 +846,7 @@ class Glide:
 
                 all_rows.extend(result["data"])
 
-            logger.info(f"Retrieved {len(all_rows)} total rows")
+            logger.debug(f"Retrieved {len(all_rows)} total rows")
             return all_rows
 
         except requests.exceptions.RequestException as e:
